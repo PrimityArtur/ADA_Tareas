@@ -1,86 +1,106 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <tuple>
 
-class Grafo{
+class Graph {
 public:
-    int v;
-    std::vector<std::vector<std::pair<int,int>>> adj;
+    Graph(int vertices);
+    void addEdge(int u, int v, int weight);
+    void kruskalMST();
+    void printGraph();
 
-    Grafo(int _v);
-    void addArista(int v1, int v2, int w);
-    void printGrafo();
+private:
+    int vertices;
+    std::vector<std::tuple<int, int, int>> edges;  // (weight, u, v)
+    int find(int u, std::vector<int>& parent);
+    void unionSets(int u, int v, std::vector<int>& parent, std::vector<int>& rank);
 };
 
-Grafo::Grafo(int _v){
-    v = _v;
-    adj.resize(v);
-};
-
-void Grafo::addArista(int v1, int v2, int w){
-    adj[v1].emplace_back(v2,w);
-    adj[v2].emplace_back(v1,w);
+Graph::Graph(int vertices) : vertices(vertices) {}
+void Graph::printGraph() {
+    std::cout << "(u, v , weight)" << std::endl;
+    for (int i = 0; i < edges.size(); i++) {
+        std::cout << "( " << std::get<1>(edges[i]) << ", " << std::get<2>(edges[i]) << ", " << std::get<0>(edges[i]) << ") " << std::endl;
+    }
+    std::cout << std::endl << std::endl;
 }
 
-void Grafo::printGrafo(){
-    for(int i = 0; i < v; i++){
-        std::cout << "V " << i << ": ";
-        for(int j = 0; j < adj[i].size(); j++){
-            std::cout << "(" << adj[i][j].first << ", " << adj[i][j].second << ") ";
+void Graph::addEdge(int u, int v, int weight) {
+    edges.emplace_back(weight, u, v);
+}
+int Graph::find(int u, std::vector<int>& parent) {
+    if (u != parent[u]) {
+        parent[u] = find(parent[u], parent);
+    }
+    return parent[u];
+}
+
+void Graph::unionSets(int u, int v, std::vector<int>& parent, std::vector<int>& rank) {
+    int rootU = find(u, parent);
+    int rootV = find(v, parent);
+
+    if (rootU != rootV) {
+        if (rank[rootU] > rank[rootV]) {
+            parent[rootV] = rootU;
         }
-        std::cout << std::endl;
+        else if (rank[rootU] < rank[rootV]) {
+            parent[rootU] = rootV;
+        }
+        else {
+            parent[rootV] = rootU;
+            rank[rootU]++;
+        }
     }
 }
 
-//       Kruskal
+void Graph::kruskalMST() {
+    std::vector<std::tuple<int, int, int>> mst;  // Minimal Spanning Tree
+    std::sort(edges.begin(), edges.end(), [](std::tuple<int, int, int>& a, std::tuple<int, int, int>& b) { return std::get<0>(a) < std::get<0>(b); });  // Sort edges by weight
 
-void kruskal(Grafo &g){
-    std::vector<std::pair<int,std::pair<int,int>>> edges; // (weight, (v1,v2))
-    std::vector<std::pair<int,std::pair<int,int>>> solution; // (weight, (v1,v2))
-    
-    for(int i = 0; i < g.v; i++){
-        for(int j = 0; j < g.adj[i].size(); j++){
-            edges.emplace_back(g.adj[i][j].second, std::make_pair(i,g.adj[i][j].first));
+    std::vector<int> parent(vertices);
+    std::vector<int> rank(vertices, 0);
+
+    for (int i = 0; i < vertices; ++i) {
+        parent[i] = i;
+    }
+
+    for (int i = 0; i < edges.size(); i++) { 
+        int rootU = find(std::get<1>(edges[i]), parent);
+        int rootV = find(std::get<2>(edges[i]), parent);
+
+        if (rootU != rootV) {
+            mst.emplace_back(std::get<0>(edges[i]), std::get<1>(edges[i]), std::get<2>(edges[i]));
+            unionSets(rootU, rootV, parent, rank);
         }
     }
-    std::sort(edges.begin(), edges.end(), 
-        []( const std::pair<int,std::pair<int,int>> &a, 
-            const std::pair<int,std::pair<int,int>> &b)
-    {return a.first < b.first;});
 
-    while(!edges.empty() && solution.size() != g.v-1){
-        auto edge = edges.back();
-        if(std::find(solution.begin(), solution.end(), edge.second) != std::find(solution.begin(), solution.end(), edge.first)){
-            
-            solution.emplace_back(edge);
-            
-        }
-        
+    std::cout << "Aristas para MST:\n";
+    for (int i = 0; i < mst.size(); i++) {
+        std::cout << std::get<1>(mst[i]) << " - " << std::get<2>(mst[i]) << " (weight: " << std::get<0>(mst[i]) << ")\n";
     }
-    
-        
 }
+
 
 int main() {
-    Grafo g(9);
-    g.addArista(0,1,5);
-    g.addArista(0,2,6);
-    g.addArista(0,3,4);
-    g.addArista(1,2,7);
-    g.addArista(1,7,12);
-    g.addArista(2,4,3);
-    g.addArista(2,6,4);
-    g.addArista(2,3,8);
-    g.addArista(3,5,9);
-    g.addArista(4,7,5);
-    g.addArista(5,6,7);
-    g.addArista(5,8,10);
-    g.addArista(6,8,6);
-    g.addArista(6,7,5);
-    g.addArista(7,8,11);
+    Graph g(9);
+    g.addEdge(0, 1, 5);
+    g.addEdge(0, 2, 6);
+    g.addEdge(0, 3, 4);
+    g.addEdge(1, 2, 7);
+    g.addEdge(1, 7, 12);
+    g.addEdge(2, 4, 3);
+    g.addEdge(2, 6, 4);
+    g.addEdge(2, 3, 8);
+    g.addEdge(3, 5, 9);
+    g.addEdge(4, 7, 5);
+    g.addEdge(5, 6, 7);
+    g.addEdge(5, 8, 10);
+    g.addEdge(6, 8, 6);
+    g.addEdge(6, 7, 5);
+    g.addEdge(7, 8, 11);
 
-    g.printGrafo();
-    
-    
-    
+    g.printGraph();
+    g.kruskalMST();
+
 }
